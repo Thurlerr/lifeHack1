@@ -1,0 +1,176 @@
+<div style="display: flex; flex-direction: column; gap: 16px;">
+    <!-- Card de Notificações -->
+    <div class="glass-card">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <h3 class="section-title"><span>🔔</span> Notificações & Lembretes</h3>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+            <div>
+                <div style="font-weight: 600; font-size: 0.92rem;">Lembretes no Sistema</div>
+                <div style="font-size: 0.78rem; color: var(--text-secondary);">Creatina atrasada após 10:00 e alertas periódicos dos trackers</div>
+            </div>
+            <span style="font-size: 0.78rem; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-full);
+                         background: @(NotificationService.HasPermission ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)");
+                         color: @(NotificationService.HasPermission ? "var(--accent-emerald)" : "var(--accent-amber)");">
+                @(NotificationService.HasPermission ? "Ativado" : "Desativado")
+            </span>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            @if (!NotificationService.HasPermission)
+            {
+                <button class="btn-primary-action" style="padding: 10px 14px; font-size: 0.88rem;" @onclick="RequestNotification">
+                    Ativar Permissão de Notificações
+                </button>
+            }
+            else
+            {
+                <button class="btn-secondary" style="padding: 8px 12px; font-size: 0.8rem;" @onclick="TestNotification">
+                    Testar Notificação Agora
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Gerenciador de Hábitos -->
+    <div class="glass-card">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <h3 class="section-title"><span>⚡</span> Gerenciar Hábitos</h3>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            @foreach (var habit in RoutineManager.Habits)
+            {
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.2rem;">@habit.Icon</span>
+                        <div>
+                            <div style="font-size: 0.9rem; font-weight: 600;">@habit.Title</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">
+                                @(habit.IsSystemItem ? "Item padrão nativo" : "Hábito personalizado")
+                                @(habit.TargetDeadline.HasValue ? $" • Limite {habit.TargetDeadline.Value:HH:mm}" : "")
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!habit.IsSystemItem)
+                    {
+                        <button class="btn-del-task" @onclick="() => DeleteHabit(habit.Id)" title="Excluir hábito">
+                            🗑️
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Backup e Portabilidade de Dados -->
+    <div class="glass-card">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <h3 class="section-title"><span>💾</span> Backup & Privacidade Local</h3>
+        </div>
+
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px;">
+            Seus dados são 100% locais no dispositivo (offline-first). Exporte seu backup em JSON a qualquer momento ou transfira para outro dispositivo.
+        </p>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn-secondary" @onclick="ExportBackup">
+                📥 Exportar Backup (JSON)
+            </button>
+            <label class="btn-secondary" style="cursor: pointer;">
+                📤 Importar Backup
+                <InputFile OnChange="ImportBackup" style="display: none;" accept=".json" />
+            </label>
+        </div>
+
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div style="margin-top: 10px; font-size: 0.82rem; color: var(--accent-emerald);">
+                @statusMessage
+            </div>
+        }
+    </div>
+
+    <!-- Informações do App -->
+    <div style="text-align: center; color: var(--text-muted); font-size: 0.76rem; padding: 12px 0;">
+        LifeHacks v2.0 • PWA & Android Ready (.NET 9)
+        <br />
+        Baixo atrito cognitivo • Offline First
+    </div>
+</div>
+
+@code {
+    [Inject]
+    public NotificationService NotificationService { get; set; } = default!;
+
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    [Inject]
+    public IStorageService StorageService { get; set; } = default!;
+
+    private string statusMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await NotificationService.CheckPermissionAsync();
+    }
+
+    private async Task RequestNotification()
+    {
+        var granted = await NotificationService.RequestPermissionAsync();
+        statusMessage = granted ? "Permissão de notificações concedida com sucesso!" : "Permissão não foi autorizada.";
+    }
+
+    private async Task TestNotification()
+    {
+        await NotificationService.SendNotificationAsync(
+            "🔔 Notificação de Teste",
+            "Suas notificações do LifeHacks estão funcionando perfeitamente!",
+            "test-notification"
+        );
+        statusMessage = "Notificação de teste disparada!";
+    }
+
+    private async Task DeleteHabit(string id)
+    {
+        await RoutineManager.DeleteHabitAsync(id);
+    }
+
+    private async Task ExportBackup()
+    {
+        await StorageService.DownloadBackupFileAsync();
+        statusMessage = "Backup JSON gerado e baixado!";
+    }
+
+    private async Task ImportBackup(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                using var stream = file.OpenReadStream(maxAllowedSize: 1024 * 1024 * 5); // 5MB
+                using var reader = new System.IO.StreamReader(stream);
+                var content = await reader.ReadToEndAsync();
+
+                var success = await StorageService.ImportBackupJsonAsync(content);
+                if (success)
+                {
+                    await RoutineManager.ReloadAllAsync();
+                    statusMessage = "Backup restaurado com sucesso!";
+                }
+                else
+                {
+                    statusMessage = "Falha ao processar arquivo de backup.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Erro ao importar: {ex.Message}";
+        }
+    }
+}

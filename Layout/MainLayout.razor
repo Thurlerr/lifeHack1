@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+@inject RoutineManagerService RoutineManager
+@inject NotificationService NotificationService
+@implements IDisposable
+
+<div class="app-container">
+    <header class="app-header">
+        <div class="brand-section">
+            <div class="brand-title">
+                <span>⚡</span> LifeHacks
+            </div>
+            <div class="date-subtitle">
+                @DateTime.Now.ToString("dddd, dd 'de' MMMM", ptBrCulture)
+            </div>
+        </div>
+
+        <div class="streak-pill" title="Sequência de consistência diária">
+            <span>🔥</span>
+            <span>@RoutineManager.CurrentStreak @(RoutineManager.CurrentStreak == 1 ? "dia" : "dias")</span>
+        </div>
+    </header>
+
+    <main class="main-content">
+        @Body
+    </main>
+</div>
+
+@code {
+    private readonly System.Globalization.CultureInfo ptBrCulture = new("pt-BR");
+
+    protected override async Task OnInitializedAsync()
+    {
+        RoutineManager.OnChange += StateHasChanged;
+        await RoutineManager.InitializeAsync();
+        await NotificationService.StartAsync();
+    }
+
+    public void Dispose()
+    {
+        RoutineManager.OnChange -= StateHasChanged;
+    }
+}

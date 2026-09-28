@@ -1,0 +1,198 @@
+<div style="display: flex; flex-direction: column; gap: 16px;">
+    <!-- Card Financeiro de Virada de Cartão -->
+    <div class="glass-card" style="background: linear-gradient(135deg, #162038 0%, #0f1626 100%); border-color: rgba(6, 182, 212, 0.35); padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span style="font-size: 0.76rem; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 0.05em;">
+                    💳 Planejamento da Virada do Cartão
+                </span>
+                <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary); margin-top: 4px; letter-spacing: -0.02em;">
+                    R$ @totalCardCycle.ToString("N2", ptBr)
+                </div>
+            </div>
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: var(--radius-full);">
+                @pendingCardCycleCount @(pendingCardCycleCount == 1 ? "item planejado" : "itens planejados")
+            </span>
+        </div>
+        <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 6px;">
+            Total estimado para os itens marcados para compra na próxima virada de fatura.
+        </div>
+    </div>
+
+    <!-- Barra de Adição Rápida com Enter -->
+    <div class="task-input-bar">
+        <input type="text" class="quick-input" placeholder="Novo item para a virada do cartão... (Pressione Enter)"
+               @bind="quickTitle" @bind:event="oninput" @onkeydown="HandleQuickKeyDown" />
+        <button class="btn-add-task" @onclick="AddQuickItem" title="Adicionar">+</button>
+    </div>
+
+    <!-- Filtros de Pílulas -->
+    <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+        @foreach (var filter in filters)
+        {
+            <button class="btn-secondary"
+                    style="padding: 6px 12px; font-size: 0.78rem; border-radius: var(--radius-full);
+                           background: @(selectedFilter == filter ? "rgba(6, 182, 212, 0.2)" : "rgba(255,255,255,0.03)");
+                           border-color: @(selectedFilter == filter ? "var(--accent-cyan)" : "var(--border-subtle)");
+                           color: @(selectedFilter == filter ? "var(--accent-cyan)" : "var(--text-secondary)");"
+                    @onclick="() => selectedFilter = filter">
+                @filter
+            </button>
+        }
+    </div>
+
+    <!-- Lista de Itens de Compra -->
+    @if (filteredItems.Count == 0)
+    {
+        <div class="glass-card" style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🛒</div>
+            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary);">Nenhum item nesta lista</div>
+            <div style="font-size: 0.8rem; margin-top: 4px;">Digite o nome do produto acima ou adicione com pesquisa e reviews.</div>
+        </div>
+    }
+    else
+    {
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            @foreach (var item in filteredItems)
+            {
+                <div class="glass-card interactive-card"
+                     style="padding: 14px 16px; border-left: 4px solid @(item.IsPurchased ? "var(--accent-emerald)" : GetPriorityColor(item.Priority));"
+                     @onclick="() => OpenDetail(item)">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: 700; font-size: 1rem; color: var(--text-primary); text-decoration: @(item.IsPurchased ? "line-through" : "none");">
+                                    @item.Title
+                                </span>
+                            </div>
+
+                            <div style="display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+                                @if (item.EstimatedPrice.HasValue)
+                                {
+                                    <span style="font-size: 0.82rem; font-weight: 800; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.12); padding: 2px 8px; border-radius: var(--radius-sm);">
+                                        R$ @item.EstimatedPrice.Value.ToString("N2", ptBr)
+                                    </span>
+                                }
+                                <span style="font-size: 0.72rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: var(--radius-sm);">
+                                    @item.TargetCycle
+                                </span>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: var(--radius-sm);">
+                                    @item.Category
+                                </span>
+                            </div>
+
+                            <!-- Indicadores de Diário e Links -->
+                            @if (item.DiaryNotes.Count > 0 || item.Links.Count > 0)
+                            {
+                                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary);">
+                                    @if (item.DiaryNotes.Count > 0)
+                                    {
+                                        <span>📝 @item.DiaryNotes.Count @(item.DiaryNotes.Count == 1 ? "nota" : "notas") de review</span>
+                                    }
+                                    @if (item.Links.Count > 0)
+                                    {
+                                        <span style="color: var(--accent-cyan);">🔗 @item.Links.Count @(item.Links.Count == 1 ? "link" : "links")</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Check de Comprado (1 clique) -->
+                        <button class="check-trigger @(item.IsPurchased ? "completed" : "")"
+                                style="width: 32px; height: 32px; min-width: 32px; margin-top: 2px;"
+                                @onclick:stopPropagation="true"
+                                @onclick="() => TogglePurchased(item.Id)"
+                                title="Marcar como comprado">
+                            @if (item.IsPurchased)
+                            {
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            }
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Modal Detalhado de Diário / Reviews -->
+    @if (selectedItem != null)
+    {
+        <PurchaseDetailModal Item="selectedItem" OnClose="CloseDetail" />
+    }
+</div>
+
+@code {
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    private string quickTitle = "";
+    private string selectedFilter = "Virada do Cartão";
+    private readonly string[] filters = ["Virada do Cartão", "Todos os Itens", "Alta Prioridade", "Comprados"];
+    private readonly System.Globalization.CultureInfo ptBr = new("pt-BR");
+
+    private PurchasePlanItem? selectedItem;
+
+    private decimal totalCardCycle => RoutineManager.Purchases
+        .Where(p => !p.IsPurchased && p.TargetCycle == "Virada do Cartão" && p.EstimatedPrice.HasValue)
+        .Sum(p => p.EstimatedPrice!.Value);
+
+    private int pendingCardCycleCount => RoutineManager.Purchases
+        .Count(p => !p.IsPurchased && p.TargetCycle == "Virada do Cartão");
+
+    private List<PurchasePlanItem> filteredItems
+    {
+        get
+        {
+            var list = RoutineManager.Purchases;
+            return selectedFilter switch
+            {
+                "Virada do Cartão" => list.Where(p => p.TargetCycle == "Virada do Cartão" && !p.IsPurchased).ToList(),
+                "Alta Prioridade" => list.Where(p => (p.Priority == "Alta" || p.Priority == "Essencial") && !p.IsPurchased).ToList(),
+                "Comprados" => list.Where(p => p.IsPurchased).ToList(),
+                _ => list
+            };
+        }
+    }
+
+    private string GetPriorityColor(string priority) => priority switch
+    {
+        "Essencial" => "var(--accent-rose)",
+        "Alta" => "var(--accent-amber)",
+        "Média" => "var(--accent-cyan)",
+        _ => "var(--text-muted)"
+    };
+
+    private async Task HandleQuickKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(quickTitle))
+        {
+            await AddQuickItem();
+        }
+    }
+
+    private async Task AddQuickItem()
+    {
+        if (string.IsNullOrWhiteSpace(quickTitle)) return;
+        var title = quickTitle;
+        quickTitle = "";
+        await RoutineManager.AddPurchaseItemAsync(title, "Hardware", null, "Alta", "Virada do Cartão");
+    }
+
+    private async Task TogglePurchased(string id)
+    {
+        await RoutineManager.TogglePurchasePurchasedAsync(id);
+    }
+
+    private void OpenDetail(PurchasePlanItem item)
+    {
+        selectedItem = item;
+    }
+
+    private void CloseDetail()
+    {
+        selectedItem = null;
+        StateHasChanged();
+    }
+}

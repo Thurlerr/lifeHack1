@@ -1,0 +1,106 @@
+<div class="water-container" style="border-color: @(Tracker.AccentColor)40; background: linear-gradient(145deg, #10192e 0%, #0d1527 100%);">
+    <div class="water-top">
+        <div class="water-title-wrap">
+            <span style="font-size: 1.5rem;">@Tracker.Icon</span>
+            <div>
+                <div style="font-weight: 700; font-size: 1rem; color: var(--text-primary);">@Tracker.Name</div>
+                <div style="font-size: 0.76rem; color: var(--text-secondary);">
+                    @Tracker.DoseAmount @Tracker.Unit por dose • Meta: @Tracker.TargetAmount @Tracker.Unit
+                </div>
+            </div>
+        </div>
+        <div class="water-stats">
+            <div class="water-current" style="color: @Tracker.AccentColor;">
+                @Tracker.CurrentAmount <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary);">/ @Tracker.TargetAmount @Tracker.Unit</span>
+            </div>
+            <div class="water-target">@(Tracker.Percentage)% concluído</div>
+        </div>
+    </div>
+
+    <!-- Barra de Progresso com Cor Temática do Tracker -->
+    <div class="water-progress-track">
+        <div class="water-progress-fill"
+             style="width: @(Tracker.Percentage)%; background: @Tracker.AccentColor; box-shadow: 0 0 12px @(Tracker.AccentColor)80;">
+        </div>
+    </div>
+
+    <!-- Grade de Doses / Botões Clicáveis -->
+    <div class="water-bottles-grid" style="grid-template-columns: repeat(@Math.Min(5, Math.Max(3, Tracker.TotalDoses)), 1fr);">
+        @for (int i = 1; i <= Math.Max(1, Tracker.TotalDoses); i++)
+        {
+            var doseIndex = i;
+            var isFilled = Tracker.DosesConsumed >= doseIndex;
+            <button class="bottle-btn @(isFilled ? "filled" : "")"
+                    style="@(isFilled ? $"background: {Tracker.AccentColor}25; border-color: {Tracker.AccentColor}; color: {Tracker.AccentColor};" : "")"
+                    @onclick="() => ToggleDose(doseIndex)"
+                    title="Dose @doseIndex (@Tracker.DoseAmount @Tracker.Unit)">
+                <span class="bottle-icon">@Tracker.Icon</span>
+                <span class="bottle-label">@Tracker.DoseAmount@Tracker.Unit</span>
+                <span style="font-size: 0.65rem; opacity: 0.8;">#@doseIndex</span>
+            </button>
+        }
+    </div>
+
+    <!-- Controles Rápidos e Botão de Editar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+        <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; color: var(--text-muted);"
+                @onclick="OnEdit">
+            ⚙️ Configurar
+        </button>
+
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;"
+                    @onclick="HandleDecrement" disabled="@(Tracker.DosesConsumed <= 0)">
+                - @Tracker.DoseAmount @Tracker.Unit
+            </button>
+            <button class="btn-secondary" style="padding: 6px 14px; font-size: 0.8rem; border-color: @(Tracker.AccentColor)60; color: @Tracker.AccentColor;"
+                    @onclick="HandleIncrement">
+                + @Tracker.DoseAmount @Tracker.Unit
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DoseTracker Tracker { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnUpdated { get; set; }
+
+    [Parameter]
+    public EventCallback<DoseTracker> OnEditTracker { get; set; }
+
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    private async Task ToggleDose(int doseIndex)
+    {
+        if (Tracker.DosesConsumed == doseIndex)
+        {
+            await RoutineManager.SetTrackerDosesAsync(Tracker.Id, doseIndex - 1);
+        }
+        else
+        {
+            await RoutineManager.SetTrackerDosesAsync(Tracker.Id, doseIndex);
+        }
+        await OnUpdated.InvokeAsync();
+    }
+
+    private async Task HandleIncrement()
+    {
+        await RoutineManager.IncrementTrackerDoseAsync(Tracker.Id);
+        await OnUpdated.InvokeAsync();
+    }
+
+    private async Task HandleDecrement()
+    {
+        await RoutineManager.DecrementTrackerDoseAsync(Tracker.Id);
+        await OnUpdated.InvokeAsync();
+    }
+
+    private async Task OnEdit()
+    {
+        await OnEditTracker.InvokeAsync(Tracker);
+    }
+}

@@ -1,0 +1,155 @@
+@page "/"
+@inject RoutineManagerService RoutineManager
+@implements IDisposable
+
+<PageTitle>LifeHacks - Rotina & Compras</PageTitle>
+
+@if (!RoutineManager.IsInitialized)
+{
+    <div style="display: flex; justify-content: center; align-items: center; min-height: 50vh;">
+        <div style="color: var(--text-secondary); font-size: 0.9rem;">Carregando seus hábitos e metas...</div>
+    </div>
+}
+else
+{
+    @switch (currentTab)
+    {
+        case "today":
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- SEÇÃO 1: CHECKUPS DIÁRIOS -->
+                <div>
+                    <div class="section-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h2 class="section-title">Checkups Diários</h2>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: var(--radius-full);">
+                                @completedCount/@totalActiveHabits
+                            </span>
+                        </div>
+
+                        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald);"
+                                @onclick="() => showAddHabitModal = true">
+                            + Novo Hábito
+                        </button>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column;">
+                        @foreach (var habit in activeHabits)
+                        {
+                            <RoutineCard Item="habit" OnToggle="ToggleHabit" />
+                        }
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 2: TRACKERS QUANTITATIVOS (Água, Chá, Café, Refri, etc.) -->
+                <div>
+                    <div class="section-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h2 class="section-title">Metas & Doses</h2>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: var(--radius-full);">
+                                @activeTrackers.Count
+                            </span>
+                        </div>
+
+                        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(6, 182, 212, 0.4); color: var(--accent-cyan);"
+                                @onclick="OpenNewTrackerModal">
+                            + Novo Tracker
+                        </button>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                        @foreach (var tracker in activeTrackers)
+                        {
+                            <GenericDoseTracker Tracker="tracker"
+                                                OnUpdated="HandleStateChange"
+                                                OnEditTracker="OpenEditTrackerModal" />
+                        }
+                    </div>
+                </div>
+            </div>
+            break;
+
+        case "tasks":
+            <!-- NOVA CENTRAL DE COMPRAS, WISHLIST & DIÁRIO DE REVIEWS -->
+            <PurchasePlanView />
+            break;
+
+        case "history":
+            <StreaksView />
+            break;
+
+        case "settings":
+            <SettingsView />
+            break;
+    }
+
+    <!-- Barra Inferior Mobile -->
+    <BottomNav ActiveTab="@currentTab" OnTabChanged="HandleTabChange" />
+
+    <!-- Modais -->
+    @if (showAddHabitModal)
+    {
+        <AddHabitModal OnClose="() => showAddHabitModal = false" />
+    }
+
+    @if (showTrackerModal)
+    {
+        <AddTrackerModal ExistingTracker="trackerBeingEdited" OnClose="CloseTrackerModal" />
+    }
+}
+
+@code {
+    private string currentTab = "today";
+    private bool showAddHabitModal = false;
+    private bool showTrackerModal = false;
+    private DoseTracker? trackerBeingEdited = null;
+
+    private List<DailyCheckupItem> activeHabits => RoutineManager.Habits.Where(h => !h.IsArchived).ToList();
+    private int totalActiveHabits => activeHabits.Count;
+    private int completedCount => activeHabits.Count(h => h.IsCompleted);
+
+    private List<DoseTracker> activeTrackers => RoutineManager.Trackers.Where(t => !t.IsArchived).ToList();
+
+    protected override void OnInitialized()
+    {
+        RoutineManager.OnChange += StateHasChanged;
+    }
+
+    private async Task ToggleHabit(string id)
+    {
+        await RoutineManager.ToggleHabitAsync(id);
+    }
+
+    private void HandleTabChange(string tab)
+    {
+        currentTab = tab;
+    }
+
+    private void OpenNewTrackerModal()
+    {
+        trackerBeingEdited = null;
+        showTrackerModal = true;
+    }
+
+    private void OpenEditTrackerModal(DoseTracker tracker)
+    {
+        trackerBeingEdited = tracker;
+        showTrackerModal = true;
+    }
+
+    private void CloseTrackerModal()
+    {
+        showTrackerModal = false;
+        trackerBeingEdited = null;
+        StateHasChanged();
+    }
+
+    private void HandleStateChange()
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        RoutineManager.OnChange -= StateHasChanged;
+    }
+}

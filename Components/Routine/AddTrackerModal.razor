@@ -1,0 +1,203 @@
+<div class="modal-overlay" @onclick="HandleOverlayClick">
+    <div class="modal-sheet" @onclick:stopPropagation="true" style="max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h3 class="modal-title">@(IsEditing ? "Configurar Tracker" : "Novo Tracker de Ingestão / Metas")</h3>
+            <button class="btn-close-modal" @onclick="Close">✕</button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Nome do Tracker</label>
+            <input type="text" class="form-input" placeholder="Ex: Chá Verde, Refrigerante Zero, Café..."
+                   @bind="name" @bind:event="oninput" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label class="form-label">Ícone / Emoji</label>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="text" class="form-input" style="width: 50px; text-align: center; font-size: 1.2rem;"
+                           @bind="selectedIcon" maxlength="2" />
+                    <div style="display: flex; gap: 4px; overflow-x: auto;">
+                        @foreach (var emoji in popularIcons)
+                        {
+                            <button type="button" class="btn-secondary" style="padding: 4px 6px; font-size: 1rem;"
+                                    @onclick="() => selectedIcon = emoji">
+                                @emoji
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Unidade</label>
+                <input type="text" class="form-input" placeholder="ml, xícaras, latas..." @bind="unit" />
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label class="form-label">Tamanho da Dose</label>
+                <input type="number" class="form-input" @bind="doseAmount" min="1" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Meta Total Diária</label>
+                <input type="number" class="form-input" @bind="targetAmount" min="1" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Cor de Destaque</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                @foreach (var color in colors)
+                {
+                    <button type="button"
+                            style="width: 32px; height: 32px; border-radius: 50%; background: @color; border: 2px solid @(selectedColor == color ? "#fff" : "transparent"); cursor: pointer; transition: transform 0.15s ease;"
+                            @onclick="() => selectedColor = color">
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="glass-card" style="padding: 12px; margin-top: 8px;">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <span>Lembretes Periódicos</span>
+                <input type="checkbox" @bind="reminderEnabled" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;" />
+            </label>
+
+            @if (reminderEnabled)
+            {
+                <div style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 8px;">
+                    Lembrar a cada <strong>@(reminderMinutes) min</strong> entre <strong>@(startHour):00</strong> e <strong>@(endHour):00</strong>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <div>
+                        <span style="font-size: 0.72rem; color: var(--text-muted);">Intervalo (min)</span>
+                        <input type="number" class="form-input" style="padding: 6px;" @bind="reminderMinutes" min="30" step="30" />
+                    </div>
+                    <div>
+                        <span style="font-size: 0.72rem; color: var(--text-muted);">Início (hora)</span>
+                        <input type="number" class="form-input" style="padding: 6px;" @bind="startHour" min="0" max="23" />
+                    </div>
+                    <div>
+                        <span style="font-size: 0.72rem; color: var(--text-muted);">Fim (hora)</span>
+                        <input type="number" class="form-input" style="padding: 6px;" @bind="endHour" min="0" max="23" />
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            @if (IsEditing && ExistingTracker != null && !ExistingTracker.IsSystemDefault)
+            {
+                <button class="btn-secondary" style="color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.4);"
+                        @onclick="DeleteTracker">
+                    Excluir
+                </button>
+            }
+            <button class="btn-primary-action" @onclick="SaveTracker" disabled="@string.IsNullOrWhiteSpace(name)">
+                Salvar Tracker
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public DoseTracker? ExistingTracker { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    private bool IsEditing => ExistingTracker != null;
+
+    private string name = "";
+    private string unit = "ml";
+    private int doseAmount = 500;
+    private int targetAmount = 2000;
+    private string selectedIcon = "💧";
+    private string selectedColor = "#06b6d4";
+    private bool reminderEnabled = true;
+    private int reminderMinutes = 150;
+    private int startHour = 9;
+    private int endHour = 20;
+
+    private readonly string[] popularIcons = ["💧", "🍵", "☕", "🥤", "🧃", "🥛", "📖", "💊", "⚡"];
+    private readonly string[] colors = ["#06b6d4", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", "#ec4899"];
+
+    protected override void OnInitialized()
+    {
+        if (ExistingTracker != null)
+        {
+            name = ExistingTracker.Name;
+            unit = ExistingTracker.Unit;
+            doseAmount = ExistingTracker.DoseAmount;
+            targetAmount = ExistingTracker.TargetAmount;
+            selectedIcon = ExistingTracker.Icon;
+            selectedColor = ExistingTracker.AccentColor;
+            reminderEnabled = ExistingTracker.ReminderEnabled;
+            reminderMinutes = ExistingTracker.ReminderIntervalMinutes;
+            startHour = ExistingTracker.ReminderStartHour;
+            endHour = ExistingTracker.ReminderEndHour;
+        }
+    }
+
+    private async Task SaveTracker()
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        if (IsEditing && ExistingTracker != null)
+        {
+            ExistingTracker.Name = name.Trim();
+            ExistingTracker.Unit = unit.Trim();
+            ExistingTracker.DoseAmount = Math.Max(1, doseAmount);
+            ExistingTracker.TargetAmount = Math.Max(1, targetAmount);
+            ExistingTracker.Icon = selectedIcon;
+            ExistingTracker.AccentColor = selectedColor;
+            ExistingTracker.ReminderEnabled = reminderEnabled;
+            ExistingTracker.ReminderIntervalMinutes = Math.Max(30, reminderMinutes);
+            ExistingTracker.ReminderStartHour = startHour;
+            ExistingTracker.ReminderEndHour = endHour;
+
+            await RoutineManager.UpdateTrackerAsync(ExistingTracker);
+        }
+        else
+        {
+            var newTracker = new DoseTracker
+            {
+                Name = name.Trim(),
+                Unit = unit.Trim(),
+                DoseAmount = Math.Max(1, doseAmount),
+                TargetAmount = Math.Max(1, targetAmount),
+                Icon = selectedIcon,
+                AccentColor = selectedColor,
+                ResetDaily = true,
+                ReminderEnabled = reminderEnabled,
+                ReminderIntervalMinutes = Math.Max(30, reminderMinutes),
+                ReminderStartHour = startHour,
+                ReminderEndHour = endHour
+            };
+
+            await RoutineManager.AddTrackerAsync(newTracker);
+        }
+
+        await Close();
+    }
+
+    private async Task DeleteTracker()
+    {
+        if (ExistingTracker != null)
+        {
+            await RoutineManager.DeleteTrackerAsync(ExistingTracker.Id);
+            await Close();
+        }
+    }
+
+    private async Task Close() => await OnClose.InvokeAsync();
+    private async Task HandleOverlayClick() => await Close();
+}

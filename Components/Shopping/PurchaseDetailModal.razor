@@ -1,0 +1,206 @@
+<div class="modal-overlay" @onclick="HandleOverlayClick">
+    <div class="modal-sheet" @onclick:stopPropagation="true" style="max-height: 92vh; overflow-y: auto;">
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.4rem;">🛍️</span>
+                <h3 class="modal-title">Detalhes & Diário de Pesquisa</h3>
+            </div>
+            <button class="btn-close-modal" @onclick="Close">✕</button>
+        </div>
+
+        <!-- Dados Básicos -->
+        <div class="form-group">
+            <label class="form-label">Nome do Item / Produto</label>
+            <input type="text" class="form-input" @bind="Item.Title" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label class="form-label">Preço Estimado (R$)</label>
+                <input type="number" step="0.01" class="form-input" @bind="Item.EstimatedPrice" placeholder="Ex: 5499.00" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Ciclo / Período</label>
+                <select class="form-input" @bind="Item.TargetCycle">
+                    <option value="Virada do Cartão">Virada do Cartão</option>
+                    <option value="Próxima Fatura">Próxima Fatura</option>
+                    <option value="Black Friday">Black Friday</option>
+                    <option value="Planejamento Futuro">Planejamento Futuro</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label class="form-label">Categoria</label>
+                <input type="text" class="form-input" @bind="Item.Category" placeholder="Ex: Hardware, Setup..." />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Prioridade</label>
+                <select class="form-input" @bind="Item.Priority">
+                    <option value="Essencial">🔥 Essencial</option>
+                    <option value="Alta">⭐ Alta</option>
+                    <option value="Média">🔹 Média</option>
+                    <option value="Baixa">☕ Baixa</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- SEÇÃO: DIÁRIO DE PESQUISA & REVIEWS -->
+        <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+            <div class="section-header">
+                <h4 class="section-title" style="font-size: 0.88rem;">
+                    <span>📝</span> Diário de Pesquisa & Impressões
+                </h4>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">@Item.DiaryNotes.Count notas</span>
+            </div>
+
+            <!-- Adicionar Nova Nota no Diário -->
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" class="form-input" style="flex: 1;" placeholder="Ex: Modelo Asus Dual esquenta 10°C menos nos reviews..."
+                       @bind="newNoteText" @bind:event="oninput" @onkeydown="HandleNoteKeyDown" />
+                <button class="btn-secondary" style="color: var(--accent-cyan); border-color: rgba(6, 182, 212, 0.4);"
+                        @onclick="AddNote" disabled="@string.IsNullOrWhiteSpace(newNoteText)">
+                    Anotar
+                </button>
+            </div>
+
+            <!-- Feed de Notas Cronológicas -->
+            @if (Item.DiaryNotes.Count > 0)
+            {
+                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
+                    @foreach (var note in Item.DiaryNotes)
+                    {
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 8px 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.4;">@note.Note</div>
+                                <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 2px;">
+                                    @note.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                            </div>
+                            <button class="btn-del-task" style="padding: 2px;" @onclick="() => DeleteNote(note.Id)">✕</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- SEÇÃO: LINKS DE REVIEWS & LOJAS -->
+        <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+            <div class="section-header">
+                <h4 class="section-title" style="font-size: 0.88rem;">
+                    <span>🔗</span> Links de Reviews & Ofertas
+                </h4>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">@Item.Links.Count links</span>
+            </div>
+
+            <!-- Adicionar Link -->
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <input type="text" class="form-input" placeholder="Rótulo (ex: Review Gamers Nexus)" @bind="newLinkTitle" />
+                    <input type="url" class="form-input" placeholder="https://..." @bind="newLinkUrl" />
+                </div>
+                <button class="btn-secondary" style="font-size: 0.8rem; align-self: flex-end;"
+                        @onclick="AddLink" disabled="@string.IsNullOrWhiteSpace(newLinkUrl)">
+                    + Adicionar Link
+                </button>
+            </div>
+
+            <!-- Lista de Links Clicáveis -->
+            @if (Item.Links.Count > 0)
+            {
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    @foreach (var link in Item.Links)
+                    {
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: var(--radius-sm);">
+                            <a href="@link.Url" target="_blank" rel="noopener noreferrer"
+                               style="color: var(--accent-cyan); font-size: 0.82rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <span>🌐</span> @link.Title ↗
+                            </a>
+                            <button class="btn-del-task" style="padding: 2px;" @onclick="() => DeleteLink(link.Id)">✕</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Botões de Ação Final -->
+        <div style="display: flex; gap: 10px; margin-top: 24px;">
+            <button class="btn-secondary" style="color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.4);"
+                    @onclick="DeleteItem">
+                Excluir
+            </button>
+            <button class="btn-primary-action" @onclick="SaveChanges">
+                Salvar Alterações
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public PurchasePlanItem Item { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    private string newNoteText = "";
+    private string newLinkTitle = "";
+    private string newLinkUrl = "";
+
+    private async Task HandleNoteKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(newNoteText))
+        {
+            await AddNote();
+        }
+    }
+
+    private async Task AddNote()
+    {
+        if (string.IsNullOrWhiteSpace(newNoteText)) return;
+        var text = newNoteText;
+        newNoteText = "";
+        await RoutineManager.AddDiaryNoteAsync(Item.Id, text);
+    }
+
+    private async Task DeleteNote(string noteId)
+    {
+        await RoutineManager.DeleteDiaryNoteAsync(Item.Id, noteId);
+    }
+
+    private async Task AddLink()
+    {
+        if (string.IsNullOrWhiteSpace(newLinkUrl)) return;
+        var title = string.IsNullOrWhiteSpace(newLinkTitle) ? "Link" : newLinkTitle;
+        var url = newLinkUrl;
+        newLinkTitle = "";
+        newLinkUrl = "";
+        await RoutineManager.AddReviewLinkAsync(Item.Id, title, url);
+    }
+
+    private async Task DeleteLink(string linkId)
+    {
+        await RoutineManager.DeleteReviewLinkAsync(Item.Id, linkId);
+    }
+
+    private async Task SaveChanges()
+    {
+        await RoutineManager.UpdatePurchaseItemAsync(Item);
+        await Close();
+    }
+
+    private async Task DeleteItem()
+    {
+        await RoutineManager.DeletePurchaseItemAsync(Item.Id);
+        await Close();
+    }
+
+    private async Task Close() => await OnClose.InvokeAsync();
+    private async Task HandleOverlayClick() => await Close();
+}

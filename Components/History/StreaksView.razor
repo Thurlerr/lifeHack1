@@ -1,0 +1,91 @@
+<div style="display: flex; flex-direction: column; gap: 16px;">
+    <!-- Hero Banner do Streak Atual -->
+    <div class="glass-card" style="background: linear-gradient(135deg, #181f33 0%, #111828 100%); border-color: rgba(245, 158, 11, 0.3); text-align: center; padding: 24px 16px;">
+        <div style="font-size: 2.8rem; margin-bottom: 6px;">🔥</div>
+        <div style="font-size: 2rem; font-weight: 800; color: var(--accent-amber); letter-spacing: -0.02em;">
+            @RoutineManager.CurrentStreak @(RoutineManager.CurrentStreak == 1 ? "Dia" : "Dias")
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 2px;">
+            @(RoutineManager.CurrentStreak > 0 ? "Sequência de consistência ativa!" : "Complete suas metas de hoje para iniciar seu streak!")
+        </div>
+    </div>
+
+    <!-- Mini Grade de Consistência dos Últimos 7 Dias -->
+    <div class="glass-card">
+        <div class="section-header" style="margin-bottom: 12px;">
+            <span class="section-title" style="font-size: 0.85rem;">Últimos 7 Dias</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Consistência</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px;">
+            @foreach (var dayOffset in Enumerable.Range(0, 7).Reverse())
+            {
+                var targetDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-dayOffset));
+                var isToday = dayOffset == 0;
+                var record = RoutineManager.History.FirstOrDefault(h => h.Date == targetDate);
+                var isCompleted = isToday
+                    ? (RoutineManager.Habits.Where(h => !h.IsArchived).All(h => h.IsCompleted) &&
+                       RoutineManager.Trackers.Where(t => !t.IsArchived && t.ResetDaily).All(t => t.IsTargetReached))
+                    : (record != null && record.AllGoalsCompleted);
+
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <div style="width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 700;
+                                background: @(isCompleted ? "var(--accent-emerald)" : "rgba(255,255,255,0.05)");
+                                color: @(isCompleted ? "#080c14" : "var(--text-muted)");
+                                border: 1px solid @(isCompleted ? "var(--accent-emerald)" : "var(--border-subtle)");
+                                box-shadow: @(isCompleted ? "0 0 10px var(--accent-emerald-glow)" : "none");">
+                        @(isCompleted ? "✓" : targetDate.Day.ToString())
+                    </div>
+                    <span style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">
+                        @(targetDate.ToString("ddd", ptBr))
+                    </span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Histórico de Dias Anteriores -->
+    <div>
+        <div class="section-header" style="margin-bottom: 8px;">
+            <h3 class="section-title">Registro de Dias</h3>
+        </div>
+
+        @if (RoutineManager.History.Count == 0)
+        {
+            <div class="glass-card" style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.85rem;">
+                Nenhum histórico anterior registrado ainda. Conforme os dias passarem, os resumos diários aparecerão aqui.
+            </div>
+        }
+        else
+        {
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                @foreach (var record in RoutineManager.History.OrderByDescending(h => h.Date))
+                {
+                    <div class="glass-card" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px;">
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">
+                                @record.Date.ToString("dd 'de' MMMM, yyyy", ptBr)
+                            </div>
+                            <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 2px;">
+                                Hábitos: @record.CompletedItemsCount/@record.TotalItemsCount concluídos
+                            </div>
+                        </div>
+
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.85rem; font-weight: 800; color: @(record.AllGoalsCompleted ? "var(--accent-emerald)" : "var(--accent-amber)");">
+                                @(record.CompletionPercentage)%
+                            </span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    private readonly System.Globalization.CultureInfo ptBr = new("pt-BR");
+}
