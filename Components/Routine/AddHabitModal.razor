@@ -1,0 +1,85 @@
+<div class="modal-overlay" @onclick="HandleOverlayClick">
+    <div class="modal-sheet" @onclick:stopPropagation="true">
+        <div class="modal-header">
+            <h3 class="modal-title">Novo Hábito Diário</h3>
+            <button class="btn-close-modal" @onclick="Close">✕</button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Nome do Hábito</label>
+            <input type="text" class="form-input" placeholder="Ex: Ler 20 minutos, Alongamento..."
+                   @bind="title" @bind:event="oninput" autofocus />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Ícone / Emoji</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" class="form-input" style="width: 70px; text-align: center; font-size: 1.2rem;"
+                       @bind="selectedIcon" maxlength="2" />
+                <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
+                    @foreach (var emoji in popularEmojis)
+                    {
+                        <button type="button" class="btn-secondary" style="padding: 6px 10px; font-size: 1.1rem;"
+                                @onclick="() => selectedIcon = emoji">
+                            @emoji
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>Horário Limite (Opcional)</span>
+                <input type="checkbox" @bind="hasDeadline" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;" />
+            </label>
+            @if (hasDeadline)
+            {
+                <input type="time" class="form-input" @bind="deadlinetime" />
+                <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                    O app disparará alerta ("Atrasado!") caso passe deste horário.
+                </span>
+            }
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button class="btn-primary-action" @onclick="SaveHabit" disabled="@string.IsNullOrWhiteSpace(title)">
+                Salvar Hábito
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Inject]
+    public RoutineManagerService RoutineManager { get; set; } = default!;
+
+    private string title = "";
+    private string selectedIcon = "⚡";
+    private bool hasDeadline = false;
+    private TimeOnly deadlinetime = new(12, 0);
+
+    private readonly string[] popularEmojis = ["📚", "🧘", "🏃", "☕", "🥗", "💤", "🎯", "💻", "✨"];
+
+    private async Task SaveHabit()
+    {
+        if (string.IsNullOrWhiteSpace(title)) return;
+
+        TimeOnly? finalDeadline = hasDeadline ? deadlinetime : null;
+        await RoutineManager.AddHabitAsync(title, selectedIcon, finalDeadline);
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleOverlayClick()
+    {
+        await Close();
+    }
+}

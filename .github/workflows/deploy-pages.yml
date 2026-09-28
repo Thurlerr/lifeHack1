@@ -5,13 +5,11 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
-# Permissões necessárias para publicar no GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Permite apenas uma implantação simultânea
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -47,10 +45,16 @@ jobs:
         echo "Configurando <base href=\"$BASE_PATH\" /> no index.html"
         sed -i "s|<base href=\"/\" />|<base href=\"$BASE_PATH\" />|g" release/wwwroot/index.html
 
-        # 2. Cria 404.html para que o Blazor gerencie o roteamento SPA
+        # 2. Recalcula o hash do index.html no service-worker-assets.js para garantir integridade perfeita
+        if [ -f release/wwwroot/service-worker-assets.js ]; then
+          NEW_HASH="sha256-$(openssl dgst -sha256 -binary release/wwwroot/index.html | openssl base64 -A)"
+          sed -i -E "s|\"hash\": \"[^\"]+\",(\s*\"url\": \"index\.html\")|\"hash\": \"$NEW_HASH\",\1|g" release/wwwroot/service-worker-assets.js
+        fi
+
+        # 3. Cria 404.html para que o Blazor gerencie o roteamento SPA sem telas de erro do GitHub
         cp release/wwwroot/index.html release/wwwroot/404.html
 
-        # 3. Cria arquivo .nojekyll para evitar que o GitHub Pages bloqueie a pasta _framework
+        # 4. Cria arquivo .nojekyll para evitar que o GitHub Pages bloqueie a pasta _framework
         touch release/wwwroot/.nojekyll
 
     - name: Configurar GitHub Pages

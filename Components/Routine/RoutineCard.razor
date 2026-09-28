@@ -1,0 +1,47 @@
+<div class="habit-card @(Item.IsCompleted ? "completed" : "") @(isDelayed ? "delayed" : "") interactive-card"
+     @onclick="HandleCardClick">
+    <div class="habit-left">
+        <div class="habit-icon">@Item.Icon</div>
+        <div class="habit-info">
+            <span class="habit-title">@Item.Title</span>
+            <div class="habit-meta">
+                @if (Item.TargetDeadline.HasValue)
+                {
+                    <span>Até às @Item.TargetDeadline.Value.ToString("HH:mm")</span>
+                }
+                @if (isDelayed)
+                {
+                    <span class="delayed-badge">⚠️ Atrasado!</span>
+                }
+                @if (Item.IsCompleted && Item.CompletedAt.HasValue)
+                {
+                    <span style="color: var(--accent-emerald);">Feito às @Item.CompletedAt.Value.ToLocalTime().ToString("HH:mm")</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <button class="check-trigger" aria-label="Marcar como concluído">
+        @if (Item.IsCompleted)
+        {
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        }
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DailyCheckupItem Item { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<string> OnToggle { get; set; }
+
+    private bool isDelayed => Item.IsDelayed(TimeOnly.FromDateTime(DateTime.Now));
+
+    private async Task HandleCardClick()
+    {
+        await OnToggle.InvokeAsync(Item.Id);
+    }
+}

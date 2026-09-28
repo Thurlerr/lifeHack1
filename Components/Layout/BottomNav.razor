@@ -1,0 +1,35 @@
+<nav class="bottom-nav">
+    <button class="nav-tab @(ActiveTab == "today" ? "active" : "")" @onclick="@(() => SelectTab("today"))">
+        <span class="nav-tab-icon">⚡</span>
+        <span class="nav-tab-label">Hoje</span>
+    </button>
+    <button class="nav-tab @(ActiveTab == "tasks" ? "active" : "")" @onclick="@(() => SelectTab("tasks"))">
+        <span class="nav-tab-icon">🛍️</span>
+        <span class="nav-tab-label">Compras</span>
+    </button>
+    <button class="nav-tab @(ActiveTab == "history" ? "active" : "")" @onclick="@(() => SelectTab("history"))">
+        <span class="nav-tab-icon">🔥</span>
+        <span class="nav-tab-label">Histórico</span>
+    </button>
+    <button class="nav-tab @(ActiveTab == "settings" ? "active" : "")" @onclick="@(() => SelectTab("settings"))">
+        <span class="nav-tab-icon">⚙️</span>
+        <span class="nav-tab-label">Ajustes</span>
+    </button>
+</nav>
+
+@code {
+    [Parameter]
+    public string ActiveTab { get; set; } = "today";
+
+    [Parameter]
+    public EventCallback<string> OnTabChanged { get; set; }
+
+    private async Task SelectTab(string tab)
+    {
+        if (ActiveTab != tab)
+        {
+            ActiveTab = tab;
+            await OnTabChanged.InvokeAsync(tab);
+        }
+    }
+}
