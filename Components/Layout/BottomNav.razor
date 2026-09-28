@@ -28,7 +28,6 @@
     {
         if (ActiveTab != tab)
         {
-            ActiveTab = tab;
             await OnTabChanged.InvokeAsync(tab);
         }
     }

@@ -39,15 +39,11 @@ A aba **Pendências** foi completamente promovida para uma **Central de Compras 
 
 ## 3. Como Gerar e Instalar o APK no seu Celular Android
 
-### Opção 1: Via PWABuilder (Recomendado - 2 Minutos, Sem Instalar SDKs no PC)
+### Via PWABuilder (Recomendado - 2 Minutos, Sem Instalar SDKs no PC)
 A Microsoft mantém a ferramenta oficial e gratuita [PWABuilder](https://www.pwabuilder.com), que empacota aplicações WebAssembly Standalone em arquivos `.apk` prontos e assinados:
 
-1. Faça o deploy da aplicação em qualquer serviço estático gratuito (GitHub Pages, Cloudflare Pages, Firebase Hosting ou Vercel).
+1. O app já está publicado automaticamente no GitHub Pages via workflow de deploy.
 2. Acesse [PWABuilder.com](https://www.pwabuilder.com) e cole a URL da sua aplicação.
 3. O PWABuilder validará o manifesto e o service worker que já configuramos.
 4. Clique em **"Package for Android"** -> **"Generate APK"**.
 5. Baixe o arquivo `.apk`, envie para o seu celular (via WhatsApp, Google Drive ou cabo) e instale diretamente.
-
-### Opção 2: Via GitHub Actions (Build na Nuvem 100% Automatizado)
-O arquivo [.github/workflows/build-android-apk.yml](file:///c:/Users/Andrew/Desktop/dev/life%20hacks/.github/workflows/build-android-apk.yml) já está criado no projeto.
-- Assim que você subir o código para o seu repositório no GitHub (`git push`), a esteira do GitHub Actions inicializa uma máquina virtual com Android SDK e JDK pré-instalados, compila o APK e disponibiliza o arquivo diretamente na aba **Actions -> Artifacts** para download.
